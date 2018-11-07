@@ -1,5 +1,4 @@
-
-package br.com.conductor.heimdall.core.enums;
+package br.com.conductor.heimdall.core.dto.integration;
 
 /*-
  * =========================LICENSE_START==================================
@@ -10,9 +9,9 @@ package br.com.conductor.heimdall.core.enums;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,30 +20,23 @@ package br.com.conductor.heimdall.core.enums;
  * ==========================LICENSE_END===================================
  */
 
-import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import javax.servlet.http.HttpServletRequest;
-
-import br.com.conductor.heimdall.core.entity.Interceptor;
+import java.io.Serializable;
 
 /**
- * Provides method to validate the path of a {@link Interceptor}.
+ * Class is a Data Transfer Object for the reference App.
  *
- * @author Filipe Germano
- *
+ * @author <a href="https://dijalmasilva.github.io" target="_blank">Dijalma Silva</a>
  */
-public interface Should {
-     
-	/**
-	 * Validates if a inbound {@link Interceptor} URL is valid.
-	 * 
-	 * @param path				The Set that represents the path
-	 * @param pathsAllowed		The Set of allowed paths
-	 * @param inboundURL		The inbound URL
-	 * @param method			The HTTP method
-	 * @param req				The {@link HttpServletRequest}
-	 * @return					True if the inbound URL is valid, false otherwise
-	 */
-     public boolean filter(Set<String> path, Set<String> pathsAllowed, String inboundURL, String method, HttpServletRequest req);
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class ReferenceAppDTO implements Serializable {
 
+    private Long id;
+
+    private String name;
 }

@@ -1,15 +1,15 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import { bindActionCreators } from 'redux'
-import { getAllResourcesByApi, clearResources, toggleModal, remove } from '../actions/resources'
 import PropTypes from 'prop-types'
+import {Row, Col, Button, Tooltip, Modal, notification} from 'antd'
 
-import { Row, Col, Button, Tooltip, Modal } from 'antd'
-
-import Loading from '../components/ui/Loading'
+import i18n from "../i18n/i18n"
 import Operations from './Operations'
-import ResourceForm from '../components/resources/ResourceForm'
+import Loading from '../components/ui/Loading'
 import HeimdallCollapse from '../components/collapse'
+import ResourceForm from '../components/resources/ResourceForm'
+import { getAllResourcesByApi, clearResources, toggleModal, remove } from '../actions/resources'
 
 const HeimdallPanel = HeimdallCollapse.Panel;
 const ButtonGroup = Button.Group;
@@ -41,6 +41,13 @@ class Resources extends Component {
     componentWillUnmount() {
         this.props.clearResources()
         // this.setState({...this.state, steps: []})
+    }
+
+    componentWillReceiveProps(newProps) {
+        if (newProps.notification && newProps.notification !== this.props.notification) {
+            const { type, message, description } = newProps.notification
+            notification[type]({ message, description })
+        }
     }
 
     callback(keys) {
@@ -85,12 +92,12 @@ class Resources extends Component {
         if (!resources) return <Loading />
 
         const modalResource =
-            <Modal title="Add Resource"
+            <Modal title={i18n.t('add_resource')}
                 footer={[
-                    <Button key="back" onClick={this.handleCancel}>Cancel</Button>,
-                    <Button key="submit" type="primary" loading={loading} onClick={this.handleSave}>
-                        Save
-                        </Button>
+                    <Button id="cancelAddResource" key="back" onClick={this.handleCancel}>{i18n.t('cancel')}</Button>,
+                    <Button id="saveResource" key="submit" type="primary" loading={loading} onClick={this.handleSave}>
+                        {i18n.t('save')}
+                    </Button>
                 ]}
                 visible={this.props.visibleModal}
                 onCancel={this.handleCancel}
@@ -102,7 +109,7 @@ class Resources extends Component {
             return (
                 <Row type="flex" justify="center" align="bottom">
                     <Col style={{ marginTop: 20 }}>
-                        You don't have resources in this <b>API</b>, please <Button type="dashed" className="add-tour" onClick={this.addResourceModal}>Add Resource</Button>
+                        {i18n.t('you_do_not_have_resources_in_this')} <b>{i18n.t('api')}</b>! <Button id="addResourceWhenListIsEmpty" type="dashed" className="add-tour" onClick={this.addResourceModal}>{i18n.t('add_resource')}</Button>
                     </Col>
 
                     {modalResource}
@@ -118,24 +125,24 @@ class Resources extends Component {
                             <HeimdallPanel className={index === 0 ? "header-tour" : ''} header={resource.name} key={resource.id} extra={
                                 <Row type="flex" justify="center">
                                     <ButtonGroup>
-                                        <Tooltip title="Update">
+                                        <Tooltip title={i18n.t('edit')}>
                                             <Button type="primary" icon="edit" onClick={this.updateResourceModal(resource.id)} />
                                         </Tooltip>
-                                        <Tooltip title="Delete">
+                                        <Tooltip title={i18n.t('delete')}>
                                             <Button type="danger" icon="delete" onClick={this.remove(api.id, resource.id)} />
                                         </Tooltip>
                                     </ButtonGroup>
                                 </Row>
                             } extraWidth={10}>
-                                <Operations idResource={resource.id} idApi={api.id} />
+                                <Operations idResource={resource.id} idApi={api.id} apiBasepath={api.basePath} />
                             </HeimdallPanel>
                         )
                     })}
                 </HeimdallCollapse>
                 <br />
                 <Row type="flex" justify="end">
-                    <Tooltip title="Add Resource">
-                        <Button className="card-button add-tour" type="primary" icon="plus" onClick={this.addResourceModal} size="large" shape="circle" />
+                    <Tooltip title={i18n.t('add_resource')}>
+                        <Button id="addResource" className="card-button add-tour" type="primary" icon="plus" onClick={this.addResourceModal} size="large" shape="circle" />
                     </Tooltip>
                 </Row>
 
@@ -154,7 +161,8 @@ const mapStateToProps = state => {
         resources: state.resources.resources,
         operations: state.operations.list,
         visibleModal: state.resources.visibleModal,
-        loading: state.resources.loading
+        loading: state.resources.loading,
+        notification: state.resources.notification
     }
 }
 

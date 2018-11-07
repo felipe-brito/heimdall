@@ -9,9 +9,9 @@ package br.com.conductor.heimdall.gateway.appender;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,41 +20,40 @@ package br.com.conductor.heimdall.gateway.appender;
  * ==========================LICENSE_END===================================
  */
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.bson.Document;
-
-import com.mongodb.BasicDBObject;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientOptions;
-import com.mongodb.MongoClientURI;
-import com.mongodb.ServerAddress;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.UnsynchronizedAppenderBase;
+import com.mongodb.*;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.AppenderBase;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.BsonDateTime;
+import org.bson.Document;
+
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class provides a appender service to a MongoDB database.
- * 
+ *
  * @author Marcos Filho
- * @see AppenderBase
+ * @author Marcelo Aguiar Rodrigues
  *
  */
 @Slf4j
 @NoArgsConstructor
-public class MongoDBAppender extends AppenderBase<ILoggingEvent> {
+public class MongoDBAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
 	private MongoClient mongoClient;
 	private MongoCollection<Document> collection;
 
+    @Setter
+    @Getter
+	private String zoneId;
 	@Setter
 	@Getter
 	private String url;
@@ -71,17 +70,19 @@ public class MongoDBAppender extends AppenderBase<ILoggingEvent> {
 	@Getter
 	private String uri;
 
-	public MongoDBAppender(String url, Long port, String dataBase, String collectionName) {
+	public MongoDBAppender(String url, Long port, String dataBase, String collectionName, String zoneId) {
 		this.url = url;
 		this.port = port;
 		this.dataBase = dataBase;
 		this.collectionName = collectionName;
+		this.zoneId = zoneId;
 	}
 
-	public MongoDBAppender(String uri, String dataBase, String collectionName) {
+	public MongoDBAppender(String uri, String dataBase, String collectionName, String zoneId) {
 		this.uri = uri;
 		this.dataBase = dataBase;
 		this.collectionName = collectionName;
+        this.zoneId = zoneId;
 	}
 
 	@Override
@@ -90,7 +91,7 @@ public class MongoDBAppender extends AppenderBase<ILoggingEvent> {
 		if (this.uri != null) {
 			this.mongoClient = new MongoClient(new MongoClientURI(this.uri));
 		} else {
-			MongoClientOptions options = new MongoClientOptions.Builder().socketKeepAlive(true).build();
+			MongoClientOptions options = new MongoClientOptions.Builder().build();
 			ServerAddress address = new ServerAddress(this.url, this.port.intValue());
 			this.mongoClient = new MongoClient(address, options);
 		}
@@ -111,8 +112,13 @@ public class MongoDBAppender extends AppenderBase<ILoggingEvent> {
 
 	@Override
 	protected void append(ILoggingEvent e) {
+        ZoneId zoneId = ZoneId.of(this.zoneId);
+
+        // Offset in milliseconds based on the informed Zone
+        long offset = zoneId.getRules().getOffset(Instant.now()).getTotalSeconds() * 1000;
+
 		Map<String, Object> objLog = new HashMap<>();
-		objLog.put("ts", new Date(e.getTimeStamp()));
+		objLog.put("ts", new BsonDateTime(e.getTimeStamp() + offset));
 		objLog.put("trace", BasicDBObject.parse(e.getFormattedMessage()));
 		objLog.put("level", e.getLevel().toString());
 		objLog.put("logger", e.getLoggerName());
