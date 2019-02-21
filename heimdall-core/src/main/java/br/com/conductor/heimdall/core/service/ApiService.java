@@ -30,21 +30,22 @@ import br.com.conductor.heimdall.core.dto.ReferenceIdDTO;
 import br.com.conductor.heimdall.core.dto.page.ApiPage;
 import br.com.conductor.heimdall.core.entity.Api;
 import br.com.conductor.heimdall.core.entity.Environment;
+import br.com.conductor.heimdall.core.entity.Plan;
 import br.com.conductor.heimdall.core.exception.HeimdallException;
 import br.com.conductor.heimdall.core.repository.ApiRepository;
 import br.com.conductor.heimdall.core.service.amqp.AMQPRouteService;
 import br.com.conductor.heimdall.core.util.Pageable;
+import br.com.conductor.heimdall.core.util.StringUtils;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.data.domain.ExampleMatcher.StringMatcher;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static br.com.conductor.heimdall.core.exception.ExceptionMessage.*;
@@ -69,12 +70,17 @@ public class ApiService {
      @Autowired
      private EnvironmentService environmentService;
 
+     @Autowired
+     private ResourceService resourceService;
+
+     @Autowired
+     private MiddlewareService middlewareService;
+
      /**
       * Finds a {@link Api} by its ID.
       *
       * @param 	id						The ID of the {@link Api}
       * @return							The {@link Api}
-      * @throws	NotFoundException		Resource not found
       */
      public Api find(Long id) {
 
@@ -95,7 +101,7 @@ public class ApiService {
 
           Api api = GenericConverter.mapper(apiDTO, Api.class);
 
-          Example<Api> example = Example.of(api, ExampleMatcher.matching().withIgnoreCase().withStringMatcher(StringMatcher.CONTAINING));
+          Example<Api> example = Example.of(api, ExampleMatcher.matching().withIgnorePaths("cors").withIgnoreCase().withStringMatcher(StringMatcher.CONTAINING));
 
           Pageable pageable = Pageable.setPageable(pageableDTO.getOffset(), pageableDTO.getLimit());
           Page<Api> page = apiRepository.findAll(example, pageable);
@@ -109,16 +115,17 @@ public class ApiService {
       * Generates a list of the {@link Api}'s
       *
       * @param 	apiDTO					{@link ApiDTO}
-      * @param 	pageableDTO				The pageable DTO
       * @return 						The list of {@link Api}'s
       */
      public List<Api> list(ApiDTO apiDTO) {
 
           Api api = GenericConverter.mapper(apiDTO, Api.class);
 
-          Example<Api> example = Example.of(api, ExampleMatcher.matching().withIgnoreCase().withStringMatcher(StringMatcher.CONTAINING));
+          Example<Api> example = Example.of(api, ExampleMatcher.matching().withIgnorePaths("cors").withIgnoreCase().withStringMatcher(StringMatcher.CONTAINING));
 
           List<Api> apis = apiRepository.findAll(example);
+
+          apis.sort(Comparator.comparing(Api::getId));
 
           return apis;
      }
@@ -128,9 +135,6 @@ public class ApiService {
       *
       * @param 	apiDTO					{@link ApiDTO}
       * @return							The saved {@link Api}
-      * @throws	BadRequestException		The basepath defined exist
-      * @throws     BadRequestException      Api basepath can not contain wild card
-      * @throws     BadRequestException      Basepath can not be empty
       */
      public Api save(ApiDTO apiDTO) {
 
@@ -141,6 +145,7 @@ public class ApiService {
           HeimdallException.checkThrow(validateInboundsEnvironments(apiDTO.getEnvironments()), API_CANT_ENVIRONMENT_INBOUND_URL_EQUALS);
 
           Api api = GenericConverter.mapperWithMapping(apiDTO, Api.class, new ApiMap());
+          api.setBasePath(StringUtils.removeMultipleSlashes(api.getBasePath()));
 
           api = apiRepository.save(api);
 
@@ -154,10 +159,6 @@ public class ApiService {
       * @param 	id						The ID of the {@link Api}
       * @param 	apiDTO					{@link ApiDTO}
       * @return							The updated {@link Api}
-      * @throws	NotFoundException		Resource not found
-      * @throws	BadRequestException		The basepath defined exist
-      * @throws     BadRequestException      Api basepath can not contain wild card
-      * @throws     BadRequestException      Basepath can not be empty
       */
      public Api update(Long id, ApiDTO apiDTO) {
 
@@ -165,16 +166,17 @@ public class ApiService {
           HeimdallException.checkThrow(isBlank(api), GLOBAL_RESOURCE_NOT_FOUND);
 
           Api validateApi = apiRepository.findByBasePath(apiDTO.getBasePath());
-          HeimdallException.checkThrow(notBlank(validateApi) && validateApi.getId() != api.getId(), API_BASEPATH_EXIST);
+          HeimdallException.checkThrow(notBlank(validateApi) && !Objects.equals(validateApi.getId(), api.getId()), API_BASEPATH_EXIST);
           HeimdallException.checkThrow(validateBasepath(apiDTO), API_BASEPATH_MALFORMED);
           HeimdallException.checkThrow(isBlank(apiDTO.getBasePath()), API_BASEPATH_EMPTY);
           HeimdallException.checkThrow(validateInboundsEnvironments(apiDTO.getEnvironments()), API_CANT_ENVIRONMENT_INBOUND_URL_EQUALS);
 
           api = GenericConverter.mapperWithMapping(apiDTO, api, new ApiMap());
+          api.setBasePath(StringUtils.removeMultipleSlashes(api.getBasePath()));
+
           api = apiRepository.save(api);
 
           amqpRoute.dispatchRoutes();
-
           return api;
      }
 
@@ -182,15 +184,33 @@ public class ApiService {
       * Deletes a {@link Api} by its ID.
       *
       * @param 	id						The ID of the {@link Api}
-      * @throws	NotFoundException		Resource not found
       */
      public void delete(Long id) {
 
           Api api = apiRepository.findOne(id);
           HeimdallException.checkThrow(isBlank(api), GLOBAL_RESOURCE_NOT_FOUND);
 
+          resourceService.deleteAllFromApi(id);
+          middlewareService.deleteAll(id);
+
           apiRepository.delete(api);
           amqpRoute.dispatchRoutes();
+     }
+
+     /**
+      * Find plans from {@link Api} by its ID.
+      *
+      * @param id   The ID of the {@link Api}
+      * @return     List of the {@link Plan}
+      */
+     @Transactional(readOnly = true)
+     public List<Plan> plansByApi(Long id) {
+
+          Api found = apiRepository.findOne(id);
+          HeimdallException.checkThrow(Objects.isNull(found), API_NOT_EXIST);
+
+          Hibernate.initialize(found.getPlans());
+          return found.getPlans();
      }
 
     /*

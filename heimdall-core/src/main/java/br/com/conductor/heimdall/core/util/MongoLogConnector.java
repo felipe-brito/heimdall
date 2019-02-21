@@ -22,17 +22,23 @@ package br.com.conductor.heimdall.core.util;
  */
 
 import br.com.conductor.heimdall.core.dto.logs.FiltersDTO;
+import br.com.conductor.heimdall.core.enums.Periods;
+import br.com.conductor.heimdall.core.dto.metrics.Metric;
 import br.com.conductor.heimdall.core.entity.LogTrace;
 import br.com.conductor.heimdall.core.environment.Property;
 import br.com.twsoftware.alfred.object.Objeto;
 import com.mongodb.*;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.mongodb.morphia.Datastore;
+import org.mongodb.morphia.AdvancedDatastore;
 import org.mongodb.morphia.Morphia;
+import org.mongodb.morphia.aggregation.Accumulator;
+import org.mongodb.morphia.aggregation.AggregationPipeline;
+import org.mongodb.morphia.aggregation.Group;
 import org.mongodb.morphia.annotations.Id;
 import org.mongodb.morphia.query.FindOptions;
 import org.mongodb.morphia.query.Query;
+import org.mongodb.morphia.query.Sort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -42,15 +48,13 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * This class creates a connection fo the MongoDB used by Heimdall
  * to save its logs.
  * 
- * @author Marcelo Aguair
+ * @author Marcelo Aguiar Rodrigues
  *
  */
 @Slf4j
@@ -61,6 +65,8 @@ public class MongoLogConnector implements Serializable {
 	 private static final long serialVersionUID = 8125889338220953042L;
 
      private String databaseName;
+
+     private String collection;
 
      @Autowired
      private Property property;
@@ -74,34 +80,155 @@ public class MongoLogConnector implements Serializable {
      @PostConstruct
      public void init() {
     	 this.databaseName = property.getMongo().getDataBase();
+    	 this.collection = property.getMongo().getCollection();
      }
 
      /**
       * Initializes the database connection by name.
       * 
       * @param databaseName
+      * @param collection
       * Database names
       */
-     public MongoLogConnector(String databaseName) {
+     public MongoLogConnector(String databaseName, String collection) {
 
          this.databaseName = databaseName;
+         this.collection = collection;
 
      }
 
+    /**
+     * Finds one specific trace.
+     *
+     * @param object LogTraceDTO
+     * @return Trace found
+     */
      public LogTrace findOne(LogTrace object) {
 
          Object idMongo = getValueId(object);
-         return this.datastore().get(object.getClass(), idMongo);
+         return this.datastore().get(this.collection, object.getClass(), idMongo);
      }
-     
+
+    /**
+     * Creates a paged result of the filters informed.
+     *
+     * @param filtersDTOS Filters for the search
+     * @param page Page wanted
+     * @param limit Number of records per page
+     * @return Paged list of traces
+     */
      public Page<LogTrace> find(List<FiltersDTO> filtersDTOS, Integer page, Integer  limit) {
          Query<LogTrace> query = this.prepareQuery(filtersDTOS);
 
          return preparePage(query, page, limit);
      }
 
+    /**
+     * Creates a descending list of metrics for a specified period of time.
+     *
+     * @param id Trace field wanted
+     * @param size max number of elements to return
+     * @param period period of time wanted
+     * @return List of metrics
+     */
+     public List<Metric> findByTop(String id, int size, Periods period) {
+         final AdvancedDatastore datastore = this.datastore();
+         Query<LogTrace> query = prepareRange(datastore.createQuery(this.collection, LogTrace.class), period);
+
+         query.field(id).notEqual(null);
+
+         final AggregationPipeline pipeline = datastore.createAggregation(this.collection, LogTrace.class)
+                 .match(query)
+                 .group(id,
+                         Group.grouping("metric", Group.last(id)),
+                         Group.grouping("value", Accumulator.accumulator("$sum", 1)))
+                 .sort(Sort.descending("value"))
+                 .limit(size);
+
+         final Iterator<Metric> aggregate = pipeline.aggregate(Metric.class);
+
+         List<Metric> list = new ArrayList<>();
+         aggregate.forEachRemaining(list::add);
+
+         return list;
+     }
+
+     public List<Metric> findByMetricBySum(String id, String source, String metric, Periods period) {
+         final AdvancedDatastore datastore = this.datastore();
+         Query<LogTrace> query = prepareRange(datastore.createQuery(this.collection, LogTrace.class), period);
+
+         query.field(source).equal(id);
+
+         final AggregationPipeline aggregation = datastore.createAggregation(this.collection, LogTrace.class)
+                 .match(query)
+                 .group(metric,
+                         Group.grouping("metric", Group.last(metric)),
+                         Group.grouping("value", Accumulator.accumulator("$sum", 1)));
+
+         final Iterator<Metric> aggregate = aggregation.aggregate(Metric.class);
+
+         List<Metric> list = new ArrayList<>();
+         aggregate.forEachRemaining(list::add);
+
+         return list;
+     }
+
+     public List<Metric> findByMetricByAvg(String id, String source, String metric, Periods period) {
+
+         final AdvancedDatastore datastore = this.datastore();
+         Query<LogTrace> query = prepareRange(datastore.createQuery(this.collection, LogTrace.class), period);
+
+         query.field(source).equal(id);
+
+         final AggregationPipeline aggregation = datastore.createAggregation(this.collection, LogTrace.class)
+                 .match(query)
+                 .group(source,
+                         Group.grouping("metric", Group.last(source)),
+                         Group.grouping("value", Accumulator.accumulator("$avg", metric)));
+
+         final Iterator<Metric> aggregate = aggregation.aggregate(Metric.class);
+
+         List<Metric> list = new ArrayList<>();
+         aggregate.forEachRemaining(list::add);
+
+         return list;
+     }
+
+     private Query<LogTrace> prepareRange(Query<LogTrace> query, Periods date) {
+         String insertedOnDate = "ts";
+         switch(date) {
+             case TODAY: {
+                 query.field(insertedOnDate).containsIgnoreCase(LocalDate.now().format(DateTimeFormatter.ISO_DATE));
+             }
+             case YESTERDAY: {
+                 query.field(insertedOnDate).containsIgnoreCase(LocalDate.now().minusDays(1).format(DateTimeFormatter.ISO_DATE));
+             }
+             case THIS_WEEK: {
+                 Map<String, LocalDate> week = CalendarUtils.firstAndLastDaysOfWeek(LocalDate.now());
+                 query.field(insertedOnDate).greaterThanOrEq(week.get("first").format(DateTimeFormatter.ISO_DATE));
+                 query.field(insertedOnDate).lessThanOrEq(week.get("last").format(DateTimeFormatter.ISO_DATE));
+                 break;
+             }
+             case LAST_WEEK: {
+                 Map<String, LocalDate> week = CalendarUtils.firstAndLastDaysOfWeek(LocalDate.now().minusWeeks(1));
+                 query.field(insertedOnDate).greaterThanOrEq(week.get("first").format(DateTimeFormatter.ISO_DATE));
+                 query.field(insertedOnDate).lessThanOrEq(week.get("last").format(DateTimeFormatter.ISO_DATE));
+                 break;
+             }
+             case THIS_MONTH: {
+                 query.field(insertedOnDate).containsIgnoreCase(CalendarUtils.yearAndMonth(LocalDate.now()));
+                 break;
+             }
+             case LAST_MONTH: {
+                 query.field(insertedOnDate).containsIgnoreCase(CalendarUtils.yearAndMonth(LocalDate.now().minusMonths(1)));
+                 break;
+             }
+         }
+         return query;
+     }
+
      private Query<LogTrace> prepareQuery(List<FiltersDTO> filtersDTOs) {
-         Query<LogTrace> query = this.datastore().createQuery(LogTrace.class);
+         Query<LogTrace> query = this.datastore().createQuery(this.collection, LogTrace.class);
 
          filtersDTOs.forEach(filtersDTO -> {
 
@@ -205,6 +332,8 @@ public class MongoLogConnector implements Serializable {
          List<LogTrace> list;
          Long totalElements = query.count();
 
+         query = query.order("-ts");
+
          page = page == null ? PAGE : page;
          limit = limit == null || limit > LIMIT ? LIMIT : limit;
 
@@ -251,7 +380,7 @@ public class MongoLogConnector implements Serializable {
           }
      }
 
-     private Datastore datastore() {
+     private AdvancedDatastore datastore() {
 
           Morphia morphia = new Morphia();
 
@@ -259,7 +388,7 @@ public class MongoLogConnector implements Serializable {
               this.createMongoClient();
           }
 
-          return morphia.createDatastore(this.client, this.databaseName);
+          return (AdvancedDatastore) morphia.createDatastore(this.client, this.databaseName);
      }
 
      private <T> Object getValueId(T object) {

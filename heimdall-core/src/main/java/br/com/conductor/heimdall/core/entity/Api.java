@@ -23,6 +23,7 @@ package br.com.conductor.heimdall.core.entity;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -99,6 +100,9 @@ public class Api implements Serializable {
      @Column(name = "BASE_PATH", length = 80, nullable = false, unique = true)
      private String basePath;
 
+     @Column(name = "CORS", nullable = false)
+     private boolean cors;
+
      @Column(name = "CREATION_DATE", nullable = false)
      @DateTimeFormat(iso = ISO.DATE_TIME)
      @JsonDeserialize(using = LocalDateTimeDeserializer.class)
@@ -106,9 +110,9 @@ public class Api implements Serializable {
      private LocalDateTime creationDate;
 
      @JsonIgnore
-     @OneToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.REMOVE, CascadeType.REFRESH, CascadeType.DETACH})
+     @OneToMany(fetch = FetchType.EAGER, cascade = {CascadeType.MERGE, CascadeType.REMOVE, CascadeType.REFRESH, CascadeType.DETACH})
      @JoinColumn(name = "API_ID")
-     private List<Resource> resources;
+     private Set<Resource> resources;
 
      @Column(name = "STATUS", length = 10, nullable = false)
      @Enumerated(EnumType.STRING)

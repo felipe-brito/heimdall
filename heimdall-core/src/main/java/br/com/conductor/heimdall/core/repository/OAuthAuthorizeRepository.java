@@ -28,6 +28,9 @@ import br.com.conductor.heimdall.core.entity.OAuthAuthorize;
  *
  * @author <a href="https://dijalmasilva.github.io" target="_blank">Dijalma Silva</a>
  */
-public interface OAuthAuthorizeRepository extends JpaRepository<OAuthAuthorize, String> {
+public interface OAuthAuthorizeRepository extends JpaRepository<OAuthAuthorize, Long> {
 
+    OAuthAuthorize findByClientIdAndExpirationDateIsNull(String clientId);
+
+    OAuthAuthorize findByTokenAuthorize(String tokenAuthorize);
 }

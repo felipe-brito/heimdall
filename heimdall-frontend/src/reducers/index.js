@@ -16,6 +16,11 @@ import roles from './Roles'
 import caches from './Caches'
 import middlewares from './middlewares'
 import traces from './Traces'
+import privileges from './Privileges'
+import ldap from './Ldap'
+import providers from './Providers'
+import scopes from './Scopes'
+import navbar from './Navbar'
 
 export default combineReducers({
     apis,
@@ -33,5 +38,10 @@ export default combineReducers({
     roles,
     middlewares,
     caches,
-    traces
+    traces,
+    privileges,
+    ldap,
+    providers,
+    scopes,
+    navbar
 })

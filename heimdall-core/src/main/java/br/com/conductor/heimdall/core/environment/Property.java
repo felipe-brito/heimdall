@@ -31,6 +31,7 @@ import lombok.Data;
  * This class represents the environment.
  * 
  * @author Filipe Germano
+ * @author Marcelo Aguiar Rodrigues
  *
  */
 @Data
@@ -39,10 +40,10 @@ public class Property {
 
      private String contextPath;
 
-     private Splunk splunk = new Splunk();
+     private Logstash logstash = new Logstash();
 
      @Data
-     public class Splunk{
+     public class Logstash {
 
           private Boolean enabled;
 
@@ -150,6 +151,9 @@ public class Property {
           private String collection;
           private String username;
           private String password;
+          private Long queueSize;
+          private Long discardingThreshold;
+          private String zoneId;
           
      }
 
@@ -167,6 +171,15 @@ public class Property {
      public class Middlewares {
     	 private Integer allowInactive;
     	 private Boolean deleteDeprecated;
+     }
+     
+     private FailSafe failsafe = new FailSafe();
+     
+     @Data
+     public class FailSafe {
+    	private int failureNumber = 3;
+    	private int sucessNumber = 3;
+    	private int delayTimeSeconds = 30;
      }
 
 }

@@ -33,7 +33,8 @@ import static org.springframework.http.HttpStatus.*;
  * 
  * @author Filipe Germano
  * @author <a href="https://dijalmasilva.github.io" target="_blank">Dijalma Silva</a>
- * 
+ * @author Marcelo Aguiar Rodrigues
+ *
  */
 @Slf4j
 public enum ExceptionMessage {
@@ -54,6 +55,8 @@ public enum ExceptionMessage {
 
     INTERCEPTOR_INVALID_CONTENT(BAD_REQUEST.value(), "Content for {} interceptor is incorrect. Use the standard: {}", BadRequestException.class),
 
+    INTERCEPTOR_NO_APP_FOUND(BAD_REQUEST.value(), "No App registered to this Api with client_id provided.", BadRequestException.class),
+
     INTERCEPTOR_NOT_EXIST(BAD_REQUEST.value(), "Interceptor defined not exist", BadRequestException.class),
 
     INTERCEPTOR_TEMPLATE_NOT_EXIST(BAD_REQUEST.value(), "Template interceptor not exist", BadRequestException.class),
@@ -62,9 +65,11 @@ public enum ExceptionMessage {
 
     INTERCEPTOR_IGNORED_INVALID(BAD_REQUEST.value(), "Reference operations invalid: {}", BadRequestException.class),
 
+    INTERCEPTOR_INVALID_LIFECYCLE(BAD_REQUEST.value(), "{} interceptor can not be attached to the Plan life cycle", BadRequestException.class),
+
     MIDDLEWARE_UNSUPPORTED_TYPE(BAD_REQUEST.value(), "File type differs from .jar not supported", BadRequestException.class),
 
-    MIDDLEWARE_CONTAINS_INTERCEOPTORS(BAD_REQUEST.value(), "Middleware still contains interceptors associated", BadRequestException.class),
+    MIDDLEWARE_CONTAINS_INTERCEPTORS(BAD_REQUEST.value(), "Middleware still contains interceptors associated", BadRequestException.class),
 
     MIDDLEWARE_INVALID_FILE(BAD_REQUEST.value(), "Invalid file", BadRequestException.class),
 
@@ -78,7 +83,9 @@ public enum ExceptionMessage {
 
     RESOURCE_METHOD_NOT_ACCEPT(BAD_REQUEST.value(), "method not accepted please use: GET, POST, PUT, PATH or DELETE", BadRequestException.class),
 
-    APP_NOT_EXIST(BAD_REQUEST.value(), "App not exist", BadRequestException.class),
+    APP_NOT_EXIST(BAD_REQUEST.value(), "App does not exist", BadRequestException.class),
+
+    API_NOT_EXIST(BAD_REQUEST.value(), "Api does not exist", BadRequestException.class),
 
     API_BASEPATH_EXIST(BAD_REQUEST.value(), "The basepath defined exist", BadRequestException.class),
 
@@ -104,19 +111,27 @@ public enum ExceptionMessage {
 
     ENVIRONMENT_INBOUND_DNS_PATTERN(BAD_REQUEST.value(), "Environment inbound URL has to follow the pattern http[s]://host.domain[:port] or www.host.domain[:port]", BadRequestException.class),PROVIDER_NOT_FOUND(BAD_REQUEST.value(), "Provider not found", BadRequestException.class),
      
-    PROVIDER_USER_UNAUTHORIZED(UNAUTHORIZED.value(), "User provider unauthorized", UnauthorizedException.class),
+    PROVIDER_USER_UNAUTHORIZED(UNAUTHORIZED.value(), "User provided unauthorized", UnauthorizedException.class),
      
     TOKEN_EXPIRED(UNAUTHORIZED.value(), "Token expired", UnauthorizedException.class),
-     
+
+    TOKEN_INVALID(UNAUTHORIZED.value(), "Token not valid", ForbiddenException.class),
+
+    SIGNATURE_DOES_NOT_MATCH(UNAUTHORIZED.value(), "JWT signature does not match locally computed signature.", UnauthorizedException.class),
+
+    TOKEN_NOT_GENERATE(INTERNAL_SERVER_ERROR.value(), "Error to generate token", ForbiddenException.class),
+
     CODE_NOT_FOUND(UNAUTHORIZED.value(), "Code already used to generate token or not defined", UnauthorizedException.class),
-     
-    GRANT_TYPE_NOT_EXIST(BAD_REQUEST.value(), "GrantType not found", BadRequestException.class),
-     
-    REFRESH_TOKEN_NOT_EXIST(BAD_REQUEST.value(), "RefreshToken not found", BadRequestException.class),
+
+    GRANT_TYPE_NOT_FOUND(BAD_REQUEST.value(), "grant_type not found", BadRequestException.class),
+
+    WRONG_GRANT_TYPE_INFORMED(BAD_REQUEST.value(), "Wrong grant_type informed", BadRequestException.class),
+
+    REFRESH_TOKEN_NOT_FOUND(BAD_REQUEST.value(), "refresh_token not found", BadRequestException.class),
 
     TYPE_OAUTH_NOT_FOUND(BAD_REQUEST.value(), "TypeOAuth not found", BadRequestException.class),
 
-    PRIVATE_KEY_NOT_FOUND(BAD_REQUEST.value(), "Privatekey not found", BadRequestException.class),
+    PRIVATE_KEY_NOT_FOUND(BAD_REQUEST.value(), "privateKey not found", BadRequestException.class),
 
     OPERATION_ATTACHED_TO_INTERCEPTOR(BAD_REQUEST.value(), "Operation attached to Interceptor", BadRequestException.class),
 
@@ -124,7 +139,45 @@ public enum ExceptionMessage {
 
     OPERATION_CANT_HAVE_DOUBLE_WILDCARD_NOT_AT_THE_END(BAD_REQUEST.value(), "Operation can have a double wild card (/**), but only at the end", BadRequestException.class),
 
-    API_BASEPATH_MALFORMED(BAD_REQUEST.value(), "Api basepath can not contain a wild card", BadRequestException.class);
+    API_BASEPATH_MALFORMED(BAD_REQUEST.value(), "Api basepath can not contain a wild card", BadRequestException.class),
+
+    USERNAME_OR_PASSWORD_INCORRECT(BAD_REQUEST.value(), "Username or password incorrect", BadRequestException.class),
+
+    USERNAME_ALREADY_EXIST(BAD_REQUEST.value(), "Username already exist!", BadRequestException.class),
+
+    EMAIL_ALREADY_EXIST(BAD_REQUEST.value(), "Email already exist!", BadRequestException.class),
+
+    CLIENT_ID_ALREADY(BAD_REQUEST.value(), "clientId already used", BadRequestException.class),
+
+    CLIENT_ID_NOT_FOUND(BAD_REQUEST.value(), "client_id not found", BadRequestException.class),
+
+    AUTHORIZATION_NOT_FOUND(UNAUTHORIZED.value(), "Authorization not found in header", UnauthorizedException.class),
+
+    RESPONSE_TYPE_NOT_FOUND(BAD_REQUEST.value(), "response_type not found", BadRequestException.class),
+
+    DEFAULT_PROVIDER_CAN_NOT_UPDATED_OR_REMOVED(FORBIDDEN.value(), "Default Provider can't to be updated or removed!", ForbiddenException.class),
+
+    ROLE_ALREADY_EXIST(BAD_REQUEST.value(), "Role already exist!", BadRequestException.class),
+
+    CIRCUIT_BREAK_ACTIVE(SERVICE_UNAVAILABLE.value(), "Circuit break enabled", ServerErrorException.class),
+
+    SCOPE_INVALID_OPERATION(BAD_REQUEST.value(), "Operation with id '{}' does not exist", BadRequestException.class),
+
+    SCOPE_INVALID_PLAN(BAD_REQUEST.value(), "Plan id with '{}' does not exist", BadRequestException.class),
+
+    SCOPE_OPERATION_NOT_IN_API(BAD_REQUEST.value(), "Operation '{}' not in Api '{}'", BadRequestException.class),
+
+    SCOPE_PLAN_NOT_IN_API(BAD_REQUEST.value(), "Plan '{}' not in Api '{}'", BadRequestException.class),
+
+    SCOPE_INVALID_NAME(BAD_REQUEST.value(), "A Scope with the provided name already exists", BadRequestException.class),
+
+    SCOPE_NO_OPERATION_FOUND(BAD_REQUEST.value(), "A Scope must have at least one Operation", BadRequestException.class),
+  
+    CORS_INTERCEPTOR_NOT_API_LIFE_CYCLE(BAD_REQUEST.value(), "The CORS Interceptor only allowed for API LifeCycle", BadRequestException.class),
+
+    CORS_INTERCEPTOR_ALREADY_ASSIGNED_TO_THIS_API(BAD_REQUEST.value(), "A CORS Interceptor already assigned to this API", BadRequestException.class),
+
+    DEFAULT_PLAN_ALREADY_EXIST_TO_THIS_API(BAD_REQUEST.value(), "Default plan already exist to this Api", BadRequestException.class);
 
     @Getter
     private Integer httpCode;
@@ -193,20 +246,22 @@ public enum ExceptionMessage {
      */
     public void raise(String... dynamicText) {
 
+        String messageDefault = this.defaultMessage;
+
         if (dynamicText != null && dynamicText.length > 0) {
 
-            Integer count = 0;
-            String baseMessage = this.defaultMessage;
+            int count = 0;
+            String baseMessage = messageDefault;
             while (baseMessage.contains("{}")) {
 
                 if (dynamicText.length == 1) {
 
-                    this.message = this.defaultMessage.replace("{}", dynamicText[count]);
+                    this.message = messageDefault.replace("{}", dynamicText[count]);
                     baseMessage = this.message;
                 } else {
 
-                    this.defaultMessage = this.defaultMessage.replaceFirst("\\{\\}", dynamicText[count]);
-                    this.message = this.defaultMessage;
+                    messageDefault = messageDefault.replaceFirst("\\{\\}", dynamicText[count]);
+                    this.message = messageDefault;
                     baseMessage = this.message;
 
                 }
@@ -215,6 +270,7 @@ public enum ExceptionMessage {
         }
         raise();
     }
+
 
     /**
      * Method responsible for validation of error codes with code 400.
