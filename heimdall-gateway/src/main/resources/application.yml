@@ -7,6 +7,7 @@ info:
 
 server:
     context-path: /
+    port: 8085
 
 heimdall:
     contextPath: /heimdall/v1
@@ -60,7 +61,7 @@ heimdall:
             - client_id
     redis:
         host: 127.0.0.1
-        port: 6379 
+        port: 6379
         maxTotal: 128
         maxIdle: 128
         minIdle: 16
@@ -136,15 +137,15 @@ management:
 zuul:
     ignoredPatterns: /manager/**
     include-debug-header: false
-    debug: 
+    debug:
         parameter: debug
         request: false
     filter:
         root: /tmp/interceptores
         interval: 8
-    host: 
+    host:
         socket-timeout-millis: 40000
-        connect-timeout-millis: 40000  
+        connect-timeout-millis: 40000
 
 security:
     basic:

@@ -1,4 +1,3 @@
-
 package br.com.conductor.heimdall.gateway;
 
 /*-
@@ -10,9 +9,9 @@ package br.com.conductor.heimdall.gateway;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,7 +19,8 @@ package br.com.conductor.heimdall.gateway;
  * limitations under the License.
  * ==========================LICENSE_END===================================
  */
-
+import br.com.conductor.heimdall.core.environment.Property;
+import br.com.conductor.heimdall.core.util.RabbitQueueUtils;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
@@ -32,30 +32,28 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
-import br.com.conductor.heimdall.core.environment.Property;
-import br.com.conductor.heimdall.core.util.RabbitQueueUtils;
-
 /**
  * This is the main Heimdall Gateway Application class. <br/>
- * Heimdall Gateway is a SpringBoot based application that uses RabbitMQ as a message broker
- * This class starts the RabbitQueue then runs the Gateway Application as a SpringBoot application.
+ * Heimdall Gateway is a SpringBoot based application that uses RabbitMQ as a
+ * message broker This class starts the RabbitQueue then runs the Gateway
+ * Application as a SpringBoot application.
  *
  * @author Filipe Germano
  * @author Marcos Filho
  *
  */
 @SpringBootApplication(exclude = {MongoAutoConfiguration.class, MongoDataAutoConfiguration.class})
-@EnableConfigurationProperties({ Property.class })
-@ComponentScan(basePackages = { "br.com.conductor.heimdall.gateway", "br.com.conductor.heimdall.core" })
+@EnableConfigurationProperties({Property.class})
+@ComponentScan(basePackages = {"br.com.conductor.heimdall.gateway", "br.com.conductor.heimdall.core"})
 @EntityScan("br.com.conductor.heimdall.core.entity")
 @EnableJpaRepositories("br.com.conductor.heimdall.core.repository")
 @EnableCaching
-public class GatewayApplication extends SpringBootServletInitializer  {
-     
-     public static void main(String[] args) {
+public class GatewayApplication extends SpringBootServletInitializer {
 
-          RabbitQueueUtils.init();
-          SpringApplication.run(GatewayApplication.class, args);
-     }
+    public static void main(String[] args) {
+
+        RabbitQueueUtils.init();
+        SpringApplication.run(GatewayApplication.class, args);
+    }
 
 }
