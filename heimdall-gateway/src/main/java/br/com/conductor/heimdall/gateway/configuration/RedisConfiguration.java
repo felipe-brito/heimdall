@@ -29,7 +29,6 @@ import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,19 +41,22 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import br.com.conductor.heimdall.core.entity.RateLimit;
 import br.com.conductor.heimdall.core.environment.Property;
+import org.springframework.data.redis.connection.RedisSentinelConfiguration;
 import redis.clients.jedis.JedisPoolConfig;
 
 /**
  * Class responsible for configuring the Redis.
  *
  * @author Marcos Filho
+ * s@author <a href="https://github.com/felipe-brito" target="_blank" >Felipe Brito</a>
+ * 
  *
  */
 @Configuration
 public class RedisConfiguration {
      
      @Autowired
-     Property property;
+     private Property property;
      
      /**
       * Configures and returns a {@link JedisConnectionFactory}.
@@ -64,13 +66,9 @@ public class RedisConfiguration {
      @Bean
      public JedisConnectionFactory jedisConnectionFactory() {
           
-          JedisConnectionFactory factory = new JedisConnectionFactory();
-          
-          factory.setHostName(property.getRedis().getHost());
-          factory.setPort(property.getRedis().getPort());
-          factory.setUsePool(true);
-          factory.setPoolConfig(jediPoolConfig());
-          return factory;
+         return property.getRedis().isClusterEnabled() 
+                 ? getJedisClusterConfiguration() 
+                 : getJedisSigleConfiguration();
      }
      
      /**
@@ -101,7 +99,7 @@ public class RedisConfiguration {
      @Bean
      public RedisTemplate<Object, Object> redisTemplateObject() {
 
-          RedisTemplate<Object, Object> redisTemplate = new RedisTemplate<Object, Object>();
+          RedisTemplate<Object, Object> redisTemplate = new RedisTemplate<>();
           redisTemplate.setConnectionFactory(jedisConnectionFactory());
           redisTemplate.setKeySerializer(new StringRedisSerializer());
           redisTemplate.setValueSerializer(new JdkSerializationRedisSerializer());
@@ -147,19 +145,31 @@ public class RedisConfiguration {
       */
      @Bean(autowire = Autowire.BY_NAME)
      public RedissonClient redissonClientRateLimitInterceptor() {
-
-          return createConnection(ConstantsInterceptors.RATE_LIMIT_DATABASE);
+         
+          return property.getRedis().isClusterEnabled() 
+                  ? createRedissonClusterConnection(ConstantsInterceptors.RATE_LIMIT_DATABASE) 
+                  : createRedissonSingleConnection(ConstantsInterceptors.RATE_LIMIT_DATABASE);
+          
      }
 
+     /**
+      * Configuresan and return a {@link RedissonClient}
+      * 
+      * @return {@link RedissonClient}
+      */
      @Bean(autowire = Autowire.BY_NAME)
      public RedissonClient redissonClientCacheInterceptor() {
 
-          return createConnection(ConstantsInterceptors.CACHE_INTERCEPTOR_DATABASE);
+          return property.getRedis().isClusterEnabled() 
+                  ? createRedissonClusterConnection(ConstantsInterceptors.CACHE_INTERCEPTOR_DATABASE) 
+                  : createRedissonSingleConnection(ConstantsInterceptors.CACHE_INTERCEPTOR_DATABASE);
+          
      }
 
-     private RedissonClient createConnection(int database) {
+     private RedissonClient createRedissonSingleConnection(int database) {
 
           Config config = new Config();
+          
           config.useSingleServer()
                   .setAddress(property.getRedis().getHost() + ":" + property.getRedis().getPort())
                   .setConnectionPoolSize(property.getRedis().getConnectionPoolSize())
@@ -167,4 +177,59 @@ public class RedisConfiguration {
 
           return Redisson.create(config);
      }
+     
+     private RedissonClient createRedissonClusterConnection(int database) {
+
+          Config config = new Config();
+          
+          config.useSentinelServers()
+                  .setMasterName(property.getRedis().getMasterName())
+                  .addSentinelAddress(property.getRedis().getHost() + ":" + property.getRedis().getPort())
+                  .setMasterConnectionPoolSize(property.getRedis().getConnectionPoolSize())
+                  .setSlaveConnectionPoolSize(property.getRedis().getConnectionPoolSize())
+                  .setDatabase(database);
+
+          return Redisson.create(config);
+     }
+     
+     /**
+      * 
+      * return an cluster redis configuration
+      * 
+      * @return {@link JedisConnectionFactory}
+      */
+     private JedisConnectionFactory getJedisClusterConfiguration(){
+        
+        RedisSentinelConfiguration redisSentinelConfiguration = new RedisSentinelConfiguration();
+         
+        redisSentinelConfiguration
+                .master(property.getRedis().getMasterName())
+                .sentinel(property.getRedis().getHost(), property.getRedis().getPort());
+         
+        JedisConnectionFactory factory = new JedisConnectionFactory(redisSentinelConfiguration);
+        
+        factory.setUsePool(true);
+        factory.setPoolConfig(jediPoolConfig());
+         
+        return factory;
+         
+     }
+     
+     /**
+      * Return an single redis configuration
+      * 
+      * @return {@link JedisConnectionFactory}
+      */
+     private JedisConnectionFactory getJedisSigleConfiguration(){
+        
+        JedisConnectionFactory factory = new JedisConnectionFactory();
+        
+        factory.setHostName(property.getRedis().getHost());
+        factory.setPort(property.getRedis().getPort());
+        factory.setUsePool(true);
+        factory.setPoolConfig(jediPoolConfig());
+        
+        return factory;      
+     }
+     
 }

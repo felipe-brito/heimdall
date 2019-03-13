@@ -68,6 +68,8 @@ heimdall:
         numTestsPerEvictionRun: 3
         blockWhenExhausted: true
         connectionPoolSize: 10
+        masterName: mymaster
+        clusterEnabled: false
     security:
         enabled: true
         jwt:

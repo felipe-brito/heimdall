@@ -136,6 +136,8 @@ public class Property {
           private Integer numTestsPerEvictionRun;
           private boolean blockWhenExhausted;
           private Integer connectionPoolSize;
+          private String masterName;
+          private boolean clusterEnabled;
      }
      
      private Mongo mongo = new Mongo();
