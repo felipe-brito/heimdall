@@ -34,7 +34,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.ldap.core.support.LdapContextSource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -165,7 +164,7 @@ public class TokenAuthenticationService {
                 String user = claims.getSubject();
 
                 if (user != null) {
-                    if (!credentialStateService.verifyIfTokenIsRevokeOrLogout(claims.getId())) {
+                    if (credentialStateService.isLooged(claims.getId())) {
                         User userFound = userService.findByUsername(user);
                         addAuthentication(response, user, claims.getId());
                         return new UsernamePasswordAuthenticationToken(userFound.getUserName(), userFound.getPassword(), getAuthoritiesByRoles(userFound.getRoles()));
