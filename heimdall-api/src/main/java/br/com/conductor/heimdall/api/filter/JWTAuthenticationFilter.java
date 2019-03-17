@@ -20,7 +20,10 @@ package br.com.conductor.heimdall.api.filter;
  * ==========================LICENSE_END===================================
  */
 
+import br.com.conductor.heimdall.api.configuration.GlobalExceptionHandler;
 import br.com.conductor.heimdall.api.service.TokenAuthenticationService;
+import br.com.conductor.heimdall.core.exception.HeimdallException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.GenericFilterBean;
@@ -47,10 +50,25 @@ public class JWTAuthenticationFilter extends GenericFilterBean {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
 
-        Authentication authentication = tokenAuthenticationService.getAuthentication((HttpServletRequest) request, (HttpServletResponse) response);
+        try {
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+            Authentication authentication = tokenAuthenticationService.getAuthentication((HttpServletRequest) request, (HttpServletResponse) response);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            chain.doFilter(request, response);
 
-        chain.doFilter(request, response);
+        }catch (Exception ex){
+
+            if(ex instanceof HeimdallException){
+
+                HeimdallException exceptionPIER = (HeimdallException) ex;
+                ((HttpServletResponse) response).sendError(exceptionPIER.getMsgEnum().getHttpCode(), exceptionPIER.getMessage());
+
+            }else{
+                ((HttpServletResponse) response).sendError(HttpStatus.FORBIDDEN.value(), ex.getMessage());
+            }
+
+        }
+
     }
+
 }
