@@ -20,15 +20,15 @@ const getColorStatus = (status) => {
     status = Math.floor(status / 100);
 
     if (status === 1){
-        color = '#99c2ff'
+        color = '#99c2ff';
     } else if (status === 2) {
-        color = '#56b63f'
+        color = '#56b63f';
     } else if (status === 3) {
-        color = '#ffae7a'
+        color = '#ffae7a';
     } else if (status === 4) {
-        color = '#ff6c6c'
+        color = '#ce86fe';
     } else {
-        color = '#ce86fe'
+        color = '#ff6c6c';
     }
 
     return color;

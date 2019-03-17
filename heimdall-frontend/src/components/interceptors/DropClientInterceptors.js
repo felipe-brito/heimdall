@@ -63,30 +63,35 @@ class DropClientInterceptors extends Component {
             backgroundColor = '#f7f7f7';
         }
 
-        const style = {
-            backgroundColor: backgroundColor,
-            padding: 10
-        };
+        const styleTitleBadge = {
+            backgroundColor: '#0a183f',
+            width: 100,
+            textTransform: 'uppercase',
+            position: 'relative'
+        }
+
         return connectDropTarget(
             <div>
-                <Row id="drop-client-interceptors" className="draggable-pane" style={style}>
-                    <Row type="flex" justify="center">
-                        <sup className="ant-scroll-number ant-badge-count" style={{backgroundColor: 'grey', width: 100, textTransform: 'uppercase'}}>{description}</sup>
+                <Row id="drop-client-interceptors" className="draggable-pane" style={{backgroundColor: backgroundColor}}>
+                    <Row type="flex">
+                        <sup className="ant-scroll-number ant-badge-count" style={styleTitleBadge}>{description}</sup>
                     </Row>
-                    {!this.props.interceptors && <Loading />}
-                    {this.props.interceptors && this.props.interceptors.map((interceptor, index) => {
+                    <Row style={{padding: 10}}>
+                        {!this.props.interceptors && <Loading />}
+                        {this.props.interceptors && this.props.interceptors.map((interceptor, index) => {
 
-                        return <DnDInterceptor
-                            key={index}
-                            type={interceptor.type}
-                            icon='code-o'
-                            interceptor={interceptor}
-                            order={interceptor.order ? interceptor.order : this.props.interceptors.length}
-                            moveInterceptors={this.moveInterceptors}
-                            handleForm={this.props.handleForm}
-                            handleDelete={this.props.handleDelete}
-                        />
-                    })}
+                            return <DnDInterceptor
+                                key={index}
+                                type={interceptor.type}
+                                icon='code-o'
+                                interceptor={interceptor}
+                                order={interceptor.order ? interceptor.order : this.props.interceptors.length}
+                                moveInterceptors={this.moveInterceptors}
+                                handleForm={this.props.handleForm}
+                                handleDelete={this.props.handleDelete}
+                            />
+                        })}
+                    </Row>
                 </Row>
             </div>
         )
